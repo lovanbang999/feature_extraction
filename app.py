@@ -10,6 +10,33 @@ from PIL import Image
 import sys
 import os
 
+# Custom CSS
+st.markdown("""
+<style>
+    .main > div {
+        padding-top: 2rem;
+    }
+    .stButton>button {
+        width: 100%;
+        background-color: #FF4B4B;
+        color: white;
+        font-weight: bold;
+    }
+    .stButton>button:hover {
+        background-color: #FF6B6B;
+    }
+    h1 {
+        color: #FF4B4B;
+    }
+    .metric-card {
+        background-color: #f0f2f6;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #FF4B4B;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Add utils to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
 
@@ -25,16 +52,30 @@ st.set_page_config(
     layout="wide"
 )
 
+with st.expander("👥 Thông tin nhóm", expanded=False):
+    st.write("**Nhóm 8 - Môn Khai Phá Dữ Liệu**")
+    
+    team_members = [
+        {'STT': 1, 'Họ tên': 'Lò Văn Bằng', 'MSSV': '2251061721', 'Phần đảm nhận': 'Image Features'},
+        {'STT': 2, 'Họ tên': 'Nguyễn Trung Kiên', 'MSSV': '2251061811', 'Phần đảm nhận': 'Dict Features'},
+        {'STT': 3, 'Họ tên': 'Thiều Bá Việt', 'MSSV': '2251061924', 'Phần đảm nhận': 'Text Features'},
+        {'STT': 4, 'Họ tên': 'Lường Văn Cương', 'MSSV': '20210004', 'Phần đảm nhận': 'Feature Hashing'}
+    ]
+    
+    df_team = pd.DataFrame(team_members)
+    st.dataframe(df_team, hide_index=True, use_container_width=True)
+
 # Title
 st.title("🚀 Feature Extraction Demo")
-st.markdown("**Nhóm X - Môn Khai Phá Dữ Liệu**")
+st.markdown("**Nhóm 8 - Môn Khai Phá Dữ Liệu**")
 st.markdown("---")
 
 # Sidebar
 st.sidebar.title("📋 Navigation")
 page = st.sidebar.radio(
     "Chọn phương pháp:",
-    ["🏠 Tổng quan", "📊 Dict Features", "# Feature Hashing", "📝 Text Features", "🖼️ Image Features", "🔬 So sánh"]
+    ["🏠 Tổng quan", "📊 Dict Features", "# Feature Hashing", 
+     "📝 Text Features", "🖼️ Image Features", "🔬 So sánh", "🎯 ML Performance"]
 )
 
 # ==================== TRANG TỔNG QUAN ====================
@@ -425,6 +466,176 @@ elif page == "🖼️ Image Features":
     
     # Upload image
     uploaded_file = st.file_uploader("Upload ảnh của bạn:", type=['png', 'jpg', 'jpeg'])
+
+    st.write("**Hoặc chọn ảnh mẫu:**")
+    sample_choice = st.selectbox(
+        "Chọn ảnh mẫu:",
+        ["Không chọn", "Red Image", "Green Image", "Pattern Image", "Gradient Image"]
+    )
+    
+    # XỬ LÝ ẢNH MẪU - FIX Ở ĐÂY
+    image = None
+    if sample_choice != "Không chọn":
+        sample_map = {
+            "Red Image": "datasets/sample_images/red_image.png",
+            "Green Image": "datasets/sample_images/green_image.png",
+            "Pattern Image": "datasets/sample_images/pattern_image.png",
+            "Gradient Image": "datasets/sample_images/gradient_image.png"
+        }
+        
+        sample_path = sample_map[sample_choice]
+        if os.path.exists(sample_path):
+            image = Image.open(sample_path)
+        else:
+            st.error(f"❌ Không tìm thấy ảnh mẫu: {sample_path}")
+    
+    # XỬ LÝ UPLOADED FILE
+    elif uploaded_file is not None:
+        image = Image.open(uploaded_file)
+    
+    # PHẦN CHỌN METHOD VÀ HIỂN THỊ
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        method = st.radio("Chọn phương pháp:", ["histogram", "hog", "edges"])
+    
+    # CHỈ HIỂN THỊ KHI CÓ ẢNH
+    if image is not None:
+        with col2:
+            st.write("**Original Image:**")
+            st.image(image, width=300)
+        
+        if st.button("🚀 Extract Image Features"):
+            extractor = ImageFeatureExtractor(method=method)
+            
+            with st.spinner("Đang xử lý..."):
+                features = extractor.extract_features(image)
+                
+                st.success("✅ Extraction hoàn tất!")
+                
+                # Show features
+                st.subheader("📊 Extracted Features")
+                
+                col_a, col_b = st.columns(2)
+                
+                with col_a:
+                    st.write(f"**Feature Vector Shape:** {features.shape}")
+                    st.write(f"**Number of Features:** {len(features)}")
+                    
+                    st.write("**First 20 features:**")
+                    st.write(features[:20])
+                
+                with col_b:
+                    # Visualization
+                    if method in ['histogram', 'edges']:
+                        fig = extractor.visualize_features(image)
+                        st.pyplot(fig)
+                    elif method == 'hog':
+                        st.write("**Feature Distribution:**")
+                        import matplotlib.pyplot as plt
+                        fig, ax = plt.subplots(figsize=(10, 3))
+                        ax.plot(features[:100])
+                        ax.set_title('First 100 HOG Features')
+                        ax.set_xlabel('Feature Index')
+                        ax.set_ylabel('Value')
+                        st.pyplot(fig)
+                
+                # Download features
+                st.download_button(
+                    label="📥 Download Feature Vector",
+                    data=features.tobytes(),
+                    file_name=f"{method}_features.npy",
+                    mime="application/octet-stream"
+                )
+                
+                # Explanation
+                with st.expander("💡 Giải thích kết quả"):
+                    if method == 'histogram':
+                        st.write("""
+                        **Color Histogram** cho thấy phân bố màu sắc trong ảnh:
+                        - Peaks cao = nhiều pixels có màu đó
+                        - 3 histograms riêng biệt cho R, G, B channels
+                        - Normalized về [0, 1] để dễ so sánh
+                        """)
+                    elif method == 'hog':
+                        st.write("""
+                        **HOG Features** mô tả shape và structure của objects:
+                        - Tính gradient direction tại mỗi pixel
+                        - Chia ảnh thành cells và tính histogram
+                        - Feature vector dài (thường >1000 dimensions)
+                        """)
+                    elif method == 'edges':
+                        st.write("""
+                        **Edge Features** highlight biên của objects:
+                        - Sử dụng Canny edge detector
+                        - Giá trị 1 = edge, 0 = không phải edge
+                        - Flattened thành vector 1D
+                        """)
+    
+    else:
+        st.info("👆 Upload một ảnh hoặc chọn ảnh mẫu để bắt đầu!")
+    st.header("7.2.4. Image Feature Extraction")
+    
+    st.subheader("📚 Lý thuyết")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.write("""
+        **Color Histogram:**
+        - Đếm số lượng pixels cho mỗi màu
+        - 3 histograms: Red, Green, Blue
+        
+        **Ứng dụng:**
+        - Image similarity
+        - Object tracking
+        """)
+    
+    with col2:
+        st.write("""
+        **HOG (Histogram of Oriented Gradients):**
+        - Phát hiện edges và hướng của chúng
+        - Bất biến với lighting
+        
+        **Ứng dụng:**
+        - Object detection
+        - Face recognition
+        """)
+    
+    with col3:
+        st.write("""
+        **Edge Detection:**
+        - Tìm biên của objects
+        - Sử dụng Canny algorithm
+        
+        **Ứng dụng:**
+        - Shape detection
+        - Image segmentation
+        """)
+    
+    st.markdown("---")
+    st.subheader("🎮 Demo Interactive")
+    
+    # Upload image
+    uploaded_file = st.file_uploader("Upload ảnh của bạn:", type=['png', 'jpg', 'jpeg'])
+
+    st.write("**Hoặc chọn ảnh mẫu:**")
+    sample_choice = st.selectbox(
+        "Chọn ảnh mẫu:",
+        ["Không chọn", "Red Image", "Green Image", "Pattern Image", "Gradient Image"]
+    )
+    
+    if sample_choice != "Không chọn":
+        sample_map = {
+            "Red Image": "datasets/sample_images/red_image.png",
+            "Green Image": "datasets/sample_images/green_image.png",
+            "Pattern Image": "datasets/sample_images/pattern_image.png",
+            "Gradient Image": "datasets/sample_images/gradient_image.png"
+        }
+        
+        if os.path.exists(sample_map[sample_choice]):
+            image = Image.open(sample_map[sample_choice])
+            uploaded_file = "sample"  # Trick để trigger phần xử lý
     
     col1, col2 = st.columns([1, 2])
     
@@ -684,6 +895,143 @@ elif page == "🔬 So sánh":
     
     💡 **Best practice:** Thử nhiều methods và so sánh kết quả!
     """)
+
+# ==================== ML PERFORMANCE COMPARISON ====================
+elif page == "🎯 ML Performance":
+    st.header("🎯 So sánh Performance với Machine Learning")
+    
+    st.write("""
+    Trang này demo **hiệu suất thực tế** của các phương pháp feature extraction 
+    khi kết hợp với Machine Learning models.
+    """)
+    
+    st.markdown("---")
+    
+    # Demo 1: Dict vs Hash với Titanic
+    st.subheader("1️⃣ Dict Features vs Feature Hashing (Titanic Dataset)")
+    
+    if st.button("🚀 Chạy so sánh Dict vs Hash"):
+        with st.spinner("Đang training models..."):
+            try:
+                df = pd.read_csv('datasets/titanic.csv')
+                
+                # Chuẩn bị data
+                df_clean = df[['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked', 'Survived']].dropna()
+                df_clean['Age'] = df_clean['Age'].astype(int)
+                df_clean['Fare'] = df_clean['Fare'].astype(int)
+                
+                # Convert to dict
+                dict_data = df_clean[['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']].to_dict('records')
+                labels = df_clean['Survived'].values
+                
+                # Import comparison
+                from utils.model_comparison import FeatureExtractionComparison
+                comparator = FeatureExtractionComparison()
+                
+                results = comparator.compare_dict_vs_hash(dict_data, labels)
+                
+                st.success("✅ Hoàn tất!")
+                
+                # Hiển thị kết quả
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric("DictVectorizer Accuracy", f"{results['DictVectorizer']['accuracy']:.2%}")
+                    st.write(f"⏱️ Transform time: {results['DictVectorizer']['transform_time']:.4f}s")
+                    st.write(f"🏋️ Train time: {results['DictVectorizer']['train_time']:.4f}s")
+                    st.write(f"📊 Features: {results['DictVectorizer']['n_features']}")
+                    st.write(f"💾 Memory: {results['DictVectorizer']['memory_mb']:.2f} MB")
+                
+                with col2:
+                    st.metric("FeatureHasher Accuracy", f"{results['FeatureHasher']['accuracy']:.2%}")
+                    st.write(f"⏱️ Transform time: {results['FeatureHasher']['transform_time']:.4f}s")
+                    st.write(f"🏋️ Train time: {results['FeatureHasher']['train_time']:.4f}s")
+                    st.write(f"📊 Features: {results['FeatureHasher']['n_features']}")
+                    st.write(f"💾 Memory: {results['FeatureHasher']['memory_mb']:.2f} MB")
+                
+                # Chart
+                import plotly.graph_objects as go
+                
+                fig = go.Figure(data=[
+                    go.Bar(name='DictVectorizer', x=['Accuracy', 'Speed (1/time)', 'Memory Efficiency'], 
+                           y=[results['DictVectorizer']['accuracy'], 
+                              1/results['DictVectorizer']['transform_time'],
+                              1/results['DictVectorizer']['memory_mb']]),
+                    go.Bar(name='FeatureHasher', x=['Accuracy', 'Speed (1/time)', 'Memory Efficiency'], 
+                           y=[results['FeatureHasher']['accuracy'],
+                              1/results['FeatureHasher']['transform_time'],
+                              1/results['FeatureHasher']['memory_mb']])
+                ])
+                
+                fig.update_layout(barmode='group', title='Performance Comparison')
+                st.plotly_chart(fig, use_container_width=True)
+                
+                st.info("""
+                **💡 Nhận xét:**
+                - DictVectorizer thường có accuracy cao hơn (nhiều features hơn)
+                - FeatureHasher nhanh hơn và tiết kiệm bộ nhớ hơn
+                - Trade-off: Accuracy vs Speed/Memory
+                """)
+                
+            except FileNotFoundError:
+                st.error("❌ Không tìm thấy datasets/titanic.csv")
+            except Exception as e:
+                st.error(f"❌ Lỗi: {str(e)}")
+    
+    st.markdown("---")
+    
+    # Demo 2: Count vs TF-IDF
+    st.subheader("2️⃣ Count vs TF-IDF (Text Classification)")
+    
+    sample_texts = [
+        "I love this product, it's amazing!",
+        "Terrible quality, waste of money",
+        "Best purchase ever, highly recommend",
+        "Poor service, very disappointed",
+        "Excellent value for money",
+        "Not worth it, very bad",
+        "Great experience, will buy again",
+        "Horrible, do not buy",
+        "Perfect, exactly what I needed",
+        "Worst product ever"
+    ]
+    
+    sample_labels = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0]  # 1=positive, 0=negative
+    
+    st.write("**Sample data (Sentiment Analysis):**")
+    for i, (text, label) in enumerate(zip(sample_texts[:5], sample_labels[:5])):
+        st.write(f"{i+1}. [{'+' if label else '-'}] {text}")
+    
+    if st.button("🚀 Chạy so sánh Text Methods"):
+        with st.spinner("Đang training..."):
+            # Tạo thêm data để có đủ cho train/test split
+            texts = sample_texts * 20  # 200 samples
+            labels_expanded = sample_labels * 20
+            
+            from utils.model_comparison import FeatureExtractionComparison
+            comparator = FeatureExtractionComparison()
+            
+            results = comparator.compare_text_methods(texts, labels_expanded)
+            
+            st.success("✅ Hoàn tất!")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric("CountVectorizer Accuracy", f"{results['CountVectorizer']['accuracy']:.2%}")
+                st.write(f"⏱️ Time: {results['CountVectorizer']['transform_time']:.4f}s")
+                st.write(f"📊 Features: {results['CountVectorizer']['n_features']}")
+            
+            with col2:
+                st.metric("TfidfVectorizer Accuracy", f"{results['TfidfVectorizer']['accuracy']:.2%}")
+                st.write(f"⏱️ Time: {results['TfidfVectorizer']['transform_time']:.4f}s")
+                st.write(f"📊 Features: {results['TfidfVectorizer']['n_features']}")
+            
+            st.info("""
+            **💡 Nhận xét:**
+            - TF-IDF thường perform tốt hơn cho text classification
+            - CountVectorizer đơn giản hơn, phù hợp với short texts
+            """)
 
 # Footer
 st.markdown("---")
