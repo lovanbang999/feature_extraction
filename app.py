@@ -369,7 +369,7 @@ elif page == "📝 Text Features":
     # Parameters
     col1, col2, col3 = st.columns(3)
     with col1:
-        method = st.selectbox("Method:", ["tfidf", "count"])
+        method = st.selectbox("Method:", ["tfidf", "count", "hashing"])
     with col2:
         max_features = st.slider("Max features:", 10, 50, 20)
     with col3:
