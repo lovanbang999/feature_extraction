@@ -420,60 +420,58 @@ elif page == "📝 Text Features":
                 - Count = 0: từ không xuất hiện
                 """)
 
-# ==================== IMAGE FEATURES ====================
+# ==================== IMAGE FEATURES (SCIKIT-LEARN VERSION) ====================
 elif page == "🖼️ Image Features":
-    st.header("7.2.4. Image Feature Extraction")
+    st.header("7.2.4. Image Feature Extraction (Scikit-learn)")
+    
+    st.info("⚠️ **Theo tài liệu scikit-learn**, Image Feature Extraction bao gồm: **Patch Extraction** và **Image-to-Graph Conversion**")
     
     st.subheader("📚 Lý thuyết")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         st.write("""
-        **Color Histogram:**
-        - Đếm số lượng pixels cho mỗi màu
-        - 3 histograms: Red, Green, Blue
+        **1️⃣ Patch Extraction:**
+        - Chia ảnh thành patches nhỏ
+        - Học local features từ raw pixels
+        - API: `extract_patches_2d()`, `PatchExtractor`
         
         **Ứng dụng:**
-        - Image similarity
-        - Object tracking
+        - Dictionary Learning
+        - Image Denoising
+        - Texture Analysis
         """)
     
     with col2:
         st.write("""
-        **HOG (Histogram of Oriented Gradients):**
-        - Phát hiện edges và hướng của chúng
-        - Bất biến với lighting
+        **2️⃣ Image-to-Graph:**
+        - Chuyển ảnh thành graph structure
+        - Mỗi pixel = 1 node trong graph
+        - API: `img_to_graph()`
         
         **Ứng dụng:**
-        - Object detection
-        - Face recognition
-        """)
-    
-    with col3:
-        st.write("""
-        **Edge Detection:**
-        - Tìm biên của objects
-        - Sử dụng Canny algorithm
-        
-        **Ứng dụng:**
-        - Shape detection
-        - Image segmentation
+        - Spectral Clustering
+        - Image Segmentation
+        - Region Analysis
         """)
     
     st.markdown("---")
     st.subheader("🎮 Demo Interactive")
     
-    # Upload image
+    # Import sklearn version
+    from utils.image_features import ImageFeatureExtractor
+    
+    # Upload or select image
     uploaded_file = st.file_uploader("Upload ảnh của bạn:", type=['png', 'jpg', 'jpeg'])
-
+    
     st.write("**Hoặc chọn ảnh mẫu:**")
     sample_choice = st.selectbox(
         "Chọn ảnh mẫu:",
         ["Không chọn", "Red Image", "Green Image", "Pattern Image", "Gradient Image"]
     )
     
-    # XỬ LÝ ẢNH MẪU - FIX Ở ĐÂY
+    # Xử lý ảnh
     image = None
     if sample_choice != "Không chọn":
         sample_map = {
@@ -489,244 +487,236 @@ elif page == "🖼️ Image Features":
         else:
             st.error(f"❌ Không tìm thấy ảnh mẫu: {sample_path}")
     
-    # XỬ LÝ UPLOADED FILE
     elif uploaded_file is not None:
         image = Image.open(uploaded_file)
     
-    # PHẦN CHỌN METHOD VÀ HIỂN THỊ
+    # Method selection & parameters
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        method = st.radio("Chọn phương pháp:", ["histogram", "hog", "edges"])
+        method = st.radio("Chọn phương pháp:", ["patches", "graph"])
+        
+        if method == "patches":
+            st.write("**Tham số Patch Extraction:**")
+            patch_size = st.slider("Patch size:", 16, 64, 32, 8)
+            max_patches = st.slider("Max patches:", 20, 200, 100, 10)
+        else:
+            st.write("**Tham số Graph Clustering:**")
+            n_clusters = st.slider("Number of clusters:", 2, 8, 3)
     
-    # CHỈ HIỂN THỊ KHI CÓ ẢNH
     if image is not None:
         with col2:
             st.write("**Original Image:**")
             st.image(image, width=300)
+            image_array = np.array(image)
+            st.caption(f"Size: {image_array.shape[1]}×{image_array.shape[0]} pixels")
         
-        if st.button("🚀 Extract Image Features"):
-            extractor = ImageFeatureExtractor(method=method)
-            
-            with st.spinner("Đang xử lý..."):
-                features = extractor.extract_features(image)
+        if st.button("🚀 Extract Features (scikit-learn)"):
+            if method == "patches":
+                # ========== PATCH EXTRACTION ==========
+                extractor = ImageFeatureExtractor(method='patches')
                 
-                st.success("✅ Extraction hoàn tất!")
-                
-                # Show features
-                st.subheader("📊 Extracted Features")
-                
-                col_a, col_b = st.columns(2)
-                
-                with col_a:
-                    st.write(f"**Feature Vector Shape:** {features.shape}")
-                    st.write(f"**Number of Features:** {len(features)}")
+                with st.spinner("Extracting patches..."):
+                    features, extras = extractor.extract_features(
+                        image,
+                        patch_size=(patch_size, patch_size),
+                        max_patches=max_patches
+                    )
                     
-                    st.write("**First 20 features:**")
-                    st.write(features[:20])
-                
-                with col_b:
-                    # Visualization
-                    if method in ['histogram', 'edges']:
-                        fig = extractor.visualize_features(image)
+                    st.success("✅ Patch Extraction hoàn tất!")
+                    
+                    # Show info
+                    st.subheader("📊 Kết Quả Patch Extraction")
+                    
+                    # Metrics
+                    col_a, col_b, col_c = st.columns(3)
+                    with col_a:
+                        st.metric("Number of Patches", extras['n_patches'])
+                    with col_b:
+                        st.metric("Patch Size", f"{patch_size}×{patch_size}")
+                    with col_c:
+                        st.metric("Features per Patch", patch_size * patch_size * 3)
+                    
+                    # Details
+                    col_a, col_b = st.columns(2)
+                    
+                    with col_a:
+                        st.write("**📋 Thông tin chi tiết:**")
+                        st.write(f"- Patches shape: `{extras['patches'].shape}`")
+                        st.write(f"- Flattened features: `{features.shape}`")
+                        st.write(f"- Total features: `{features.shape[0] * features.shape[1]:,}`")
+                        
+                        st.write("\n**🔢 First patch (first 20 features):**")
+                        st.write(features[0][:20])
+                        
+                        # Explain patch calculation
+                        with st.expander("💡 Cách tính số patches"):
+                            st.write(f"""
+                            **Phương pháp: Random Sampling**
+                            
+                            - Ảnh gốc: {image_array.shape[1]}×{image_array.shape[0]}
+                            - Patch size: {patch_size}×{patch_size}
+                            - `max_patches={max_patches}` → Random sampling {max_patches} vị trí
+                            
+                            **Nếu cắt đều (non-overlapping):**
+                            - Số patches ngang: {image_array.shape[1] // patch_size}
+                            - Số patches dọc: {image_array.shape[0] // patch_size}
+                            - Tổng: {(image_array.shape[1] // patch_size) * (image_array.shape[0] // patch_size)} patches
+                            
+                            **Với random sampling:**
+                            - Chọn ngẫu nhiên {max_patches} vị trí
+                            - Có thể overlap (chồng lấn)
+                            - Linh hoạt hơn cho Dictionary Learning
+                            """)
+                    
+                    with col_b:
+                        st.write("**🖼️ Visualization (16 patches đầu tiên):**")
+                        fig = extractor.visualize_patches(extras['patches'], n_display=16)
                         st.pyplot(fig)
-                    elif method == 'hog':
-                        st.write("**Feature Distribution:**")
-                        import matplotlib.pyplot as plt
-                        fig, ax = plt.subplots(figsize=(10, 3))
-                        ax.plot(features[:100])
-                        ax.set_title('First 100 HOG Features')
-                        ax.set_xlabel('Feature Index')
-                        ax.set_ylabel('Value')
+                    
+                    # Explanation
+                    with st.expander("📖 Giải thích Patch Extraction"):
+                        st.write("""
+                        **Patch Extraction là gì?**
+                        
+                        Chia ảnh lớn thành nhiều patches (mảnh) nhỏ để học các local patterns.
+                        
+                        **Quy trình:**
+                        1. Chọn patch size (ví dụ: 32×32)
+                        2. Random sampling hoặc sliding window
+                        3. Extract từng patch thành vector
+                        4. Flatten: 32×32×3 = 3,072 features/patch
+                        
+                        **Ứng dụng thực tế:**
+                        - **Dictionary Learning**: Học "alphabet" của hình ảnh
+                        - **Image Denoising**: Khử nhiễu bằng cách so sánh patches
+                        - **Texture Recognition**: Phân loại textures (gỗ, vải, đá...)
+                        - **Feature Extraction**: Dùng làm input cho ML models
+                        
+                        **Tham khảo:**
+                        - [sklearn.feature_extraction.image.extract_patches_2d](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.image.extract_patches_2d.html)
+                        """)
+            
+            else:
+                # ========== IMAGE-TO-GRAPH ==========
+                extractor = ImageFeatureExtractor(method='graph')
+                
+                with st.spinner("Converting to graph & clustering..."):
+                    labels, extras = extractor.extract_features(
+                        image,
+                        n_clusters=n_clusters
+                    )
+                    
+                    st.success("✅ Image-to-Graph Conversion hoàn tất!")
+                    
+                    # Show info
+                    st.subheader("📊 Kết Quả Graph-based Segmentation")
+                    
+                    # Metrics
+                    col_a, col_b, col_c = st.columns(3)
+                    with col_a:
+                        st.metric("Number of Nodes", extras['graph'].shape[0])
+                    with col_b:
+                        st.metric("Number of Clusters", n_clusters)
+                    with col_c:
+                        st.metric("Graph Edges", extras['graph'].nnz // 2)
+                    
+                    # Details
+                    col_a, col_b = st.columns(2)
+                    
+                    with col_a:
+                        st.write("**📋 Thông tin Graph:**")
+                        st.write(f"- Graph shape: `{extras['graph'].shape}`")
+                        st.write(f"- Graph type: Sparse adjacency matrix")
+                        st.write(f"- Labels shape: `{labels.shape}`")
+                        st.write(f"- Segmented shape: `{extras['segmented'].shape}`")
+                        
+                        st.write("\n**📊 Cluster Distribution:**")
+                        unique, counts = np.unique(labels, return_counts=True)
+                        cluster_data = []
+                        for cluster, count in zip(unique, counts):
+                            percentage = (count / len(labels)) * 100
+                            cluster_data.append({
+                                'Cluster': cluster,
+                                'Pixels': count,
+                                'Percentage': f"{percentage:.1f}%"
+                            })
+                        st.dataframe(pd.DataFrame(cluster_data), hide_index=True, use_container_width=True)
+                        
+                        with st.expander("💡 Tại sao resize về 50×50?"):
+                            st.write("""
+                            Graph-based clustering **rất chậm** với ảnh lớn vì:
+                            - Ảnh 256×256 = 65,536 nodes → Ma trận 65,536 × 65,536!
+                            - Spectral clustering complexity: O(n³)
+                            
+                            Resize về 50×50:
+                            - 2,500 nodes → Nhanh hơn nhiều
+                            - Vẫn giữ được structure chính của ảnh
+                            - Phù hợp cho demo & education
+                            """)
+                    
+                    with col_b:
+                        st.write("**🖼️ Segmentation Result:**")
+                        fig = extractor.visualize_segmentation(
+                            image_array,
+                            extras['segmented'],
+                            extras['small_image']
+                        )
                         st.pyplot(fig)
-                
-                # Download features
-                st.download_button(
-                    label="📥 Download Feature Vector",
-                    data=features.tobytes(),
-                    file_name=f"{method}_features.npy",
-                    mime="application/octet-stream"
-                )
-                
-                # Explanation
-                with st.expander("💡 Giải thích kết quả"):
-                    if method == 'histogram':
+                    
+                    # Explanation
+                    with st.expander("📖 Giải thích Image-to-Graph"):
                         st.write("""
-                        **Color Histogram** cho thấy phân bố màu sắc trong ảnh:
-                        - Peaks cao = nhiều pixels có màu đó
-                        - 3 histograms riêng biệt cho R, G, B channels
-                        - Normalized về [0, 1] để dễ so sánh
-                        """)
-                    elif method == 'hog':
-                        st.write("""
-                        **HOG Features** mô tả shape và structure của objects:
-                        - Tính gradient direction tại mỗi pixel
-                        - Chia ảnh thành cells và tính histogram
-                        - Feature vector dài (thường >1000 dimensions)
-                        """)
-                    elif method == 'edges':
-                        st.write("""
-                        **Edge Features** highlight biên của objects:
-                        - Sử dụng Canny edge detector
-                        - Giá trị 1 = edge, 0 = không phải edge
-                        - Flattened thành vector 1D
+                        **Image-to-Graph là gì?**
+                        
+                        Chuyển đổi hình ảnh thành cấu trúc đồ thị để phân tích relationships giữa các pixels.
+                        
+                        **Cấu trúc Graph:**
+                        - **Nodes**: Mỗi pixel = 1 node
+                        - **Edges**: Kết nối với 4 hoặc 8 neighbors
+                        - **Weights**: Dựa trên độ khác biệt màu sắc
+                        
+                        **Spectral Clustering:**
+                        1. Build graph từ ảnh
+                        2. Tính eigenvectors của Laplacian matrix
+                        3. Clustering trong eigenspace
+                        4. Gán labels về pixels
+                        
+                        **Ứng dụng thực tế:**
+                        - **Medical Imaging**: Phân vùng cơ quan, tumor
+                        - **Image Segmentation**: Tách object khỏi background
+                        - **Region Analysis**: Phân tích từng vùng riêng biệt
+                        - **Interactive Selection**: Click để select region
+                        
+                        **Ưu điểm:**
+                        - Unsupervised (không cần labels)
+                        - Tự động tìm boundaries
+                        - Consider cả color và spatial proximity
+                        
+                        **Tham khảo:**
+                        - [sklearn.feature_extraction.image.img_to_graph](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.image.img_to_graph.html)
+                        - [Spectral Clustering](https://scikit-learn.org/stable/modules/clustering.html#spectral-clustering)
                         """)
     
     else:
         st.info("👆 Upload một ảnh hoặc chọn ảnh mẫu để bắt đầu!")
-    st.header("7.2.4. Image Feature Extraction")
-    
-    st.subheader("📚 Lý thuyết")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.write("""
-        **Color Histogram:**
-        - Đếm số lượng pixels cho mỗi màu
-        - 3 histograms: Red, Green, Blue
         
-        **Ứng dụng:**
-        - Image similarity
-        - Object tracking
+        # Documentation links
+        st.markdown("---")
+        st.write("**📚 Tài liệu tham khảo chính thức:**")
+        st.markdown("""
+        - [Scikit-learn Feature Extraction Documentation](https://scikit-learn.org/stable/modules/feature_extraction.html#image-feature-extraction)
+        - [`sklearn.feature_extraction.image.extract_patches_2d`](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.image.extract_patches_2d.html)
+        - [`sklearn.feature_extraction.image.PatchExtractor`](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.image.PatchExtractor.html)
+        - [`sklearn.feature_extraction.image.img_to_graph`](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.image.img_to_graph.html)
+        - [Spectral Clustering](https://scikit-learn.org/stable/modules/clustering.html#spectral-clustering)
         """)
-    
-    with col2:
-        st.write("""
-        **HOG (Histogram of Oriented Gradients):**
-        - Phát hiện edges và hướng của chúng
-        - Bất biến với lighting
         
-        **Ứng dụng:**
-        - Object detection
-        - Face recognition
+        st.write("**💡 Lưu ý:**")
+        st.info("""
+        Đây là Image Feature Extraction theo **tài liệu scikit-learn chính thức**, 
+        khác với Computer Vision truyền thống (Color Histogram, HOG, SIFT, CNN features).
         """)
-    
-    with col3:
-        st.write("""
-        **Edge Detection:**
-        - Tìm biên của objects
-        - Sử dụng Canny algorithm
-        
-        **Ứng dụng:**
-        - Shape detection
-        - Image segmentation
-        """)
-    
-    st.markdown("---")
-    st.subheader("🎮 Demo Interactive")
-    
-    # Upload image
-    uploaded_file = st.file_uploader("Upload ảnh của bạn:", type=['png', 'jpg', 'jpeg'])
-
-    st.write("**Hoặc chọn ảnh mẫu:**")
-    sample_choice = st.selectbox(
-        "Chọn ảnh mẫu:",
-        ["Không chọn", "Red Image", "Green Image", "Pattern Image", "Gradient Image"]
-    )
-    
-    if sample_choice != "Không chọn":
-        sample_map = {
-            "Red Image": "datasets/sample_images/red_image.png",
-            "Green Image": "datasets/sample_images/green_image.png",
-            "Pattern Image": "datasets/sample_images/pattern_image.png",
-            "Gradient Image": "datasets/sample_images/gradient_image.png"
-        }
-        
-        if os.path.exists(sample_map[sample_choice]):
-            image = Image.open(sample_map[sample_choice])
-            uploaded_file = "sample"  # Trick để trigger phần xử lý
-    
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        method = st.radio("Chọn phương pháp:", ["histogram", "hog", "edges"])
-    
-    if uploaded_file is not None:
-        # Load image
-        image = Image.open(uploaded_file)
-        
-        with col2:
-            st.write("**Original Image:**")
-            st.image(image, width=300)
-        
-        if st.button("🚀 Extract Image Features"):
-            extractor = ImageFeatureExtractor(method=method)
-            
-            with st.spinner("Đang xử lý..."):
-                features = extractor.extract_features(image)
-                
-                st.success("✅ Extraction hoàn tất!")
-                
-                # Show features
-                st.subheader("📊 Extracted Features")
-                
-                col_a, col_b = st.columns(2)
-                
-                with col_a:
-                    st.write(f"**Feature Vector Shape:** {features.shape}")
-                    st.write(f"**Number of Features:** {len(features)}")
-                    
-                    st.write("**First 20 features:**")
-                    st.write(features[:20])
-                
-                with col_b:
-                    # Visualization
-                    if method in ['histogram', 'edges']:
-                        fig = extractor.visualize_features(image)
-                        st.pyplot(fig)
-                    elif method == 'hog':
-                        st.write("**Feature Distribution:**")
-                        import matplotlib.pyplot as plt
-                        fig, ax = plt.subplots(figsize=(10, 3))
-                        ax.plot(features[:100])
-                        ax.set_title('First 100 HOG Features')
-                        ax.set_xlabel('Feature Index')
-                        ax.set_ylabel('Value')
-                        st.pyplot(fig)
-                
-                # Download features
-                st.download_button(
-                    label="📥 Download Feature Vector",
-                    data=features.tobytes(),
-                    file_name=f"{method}_features.npy",
-                    mime="application/octet-stream"
-                )
-                
-                # Explanation
-                with st.expander("💡 Giải thích kết quả"):
-                    if method == 'histogram':
-                        st.write("""
-                        **Color Histogram** cho thấy phân bố màu sắc trong ảnh:
-                        - Peaks cao = nhiều pixels có màu đó
-                        - 3 histograms riêng biệt cho R, G, B channels
-                        - Normalized về [0, 1] để dễ so sánh
-                        """)
-                    elif method == 'hog':
-                        st.write("""
-                        **HOG Features** mô tả shape và structure của objects:
-                        - Tính gradient direction tại mỗi pixel
-                        - Chia ảnh thành cells và tính histogram
-                        - Feature vector dài (thường >1000 dimensions)
-                        """)
-                    elif method == 'edges':
-                        st.write("""
-                        **Edge Features** highlight biên của objects:
-                        - Sử dụng Canny edge detector
-                        - Giá trị 1 = edge, 0 = không phải edge
-                        - Flattened thành vector 1D
-                        """)
-    
-    else:
-        st.info("👆 Upload một ảnh để bắt đầu!")
-        
-        # Show example
-        st.write("**Hoặc thử với ảnh mẫu:**")
-        if st.button("Sử dụng ảnh mẫu"):
-            # Create sample image
-            sample_image = np.random.randint(0, 255, (200, 200, 3), dtype=np.uint8)
-            st.image(sample_image, caption="Sample Image", width=300)
-            st.info("Bạn có thể upload ảnh riêng của bạn ở trên!")
 
 # ==================== SO SÁNH ====================
 elif page == "🔬 So sánh":
