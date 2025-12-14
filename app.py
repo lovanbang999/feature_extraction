@@ -118,18 +118,17 @@ elif page == "📊 Dict Features":
     st.header("7.2.1. Loading Features from Dicts")
     
     st.subheader("📚 Lý thuyết")
-    st.write("""
+    st.markdown("""
     **DictVectorizer** chuyển đổi dữ liệu dạng dictionary thành feature vectors.
     
-    **Ví dụ:**
-```python
-    Input:  [{'city': 'Hanoi', 'age': 25}, {'city': 'HCM', 'age': 30}]
-    Output: [[25, 0, 1], [30, 1, 0]]  # [age, city=HCM, city=Hanoi]
-```
-    
-    **Ứng dụng:** Dữ liệu categorical như thông tin khách hàng, sản phẩm, v.v.
-    """)
-    
+    **Ví dụ:** """)
+    st.code("""
+    Input:  [{'age': '25', 'city': 'Hanoi'}, {'age': '30', 'city': 'Danang'}]
+    Output: [[25, 1, 0], [30, 0, 1]]  # [age, city=Hanoi, city=Danang]""",language='python')
+
+    st.markdown("""
+                **Ứng dụng:** Dữ liệu categorical như thông tin khách hàng, sản phẩm, v.v. 
+                """)
     st.markdown("---")
     st.subheader("🎮 Demo Interactive")
     

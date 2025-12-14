@@ -8,18 +8,12 @@ import pandas as pd
 import numpy as np
 
 class DictFeatureExtractor:
+    # ham khoi tao 
     def __init__(self):
         self.vectorizer = DictVectorizer(sparse=False)
         
     def extract_features(self, data_dict_list):
-        """
-        Input: List of dictionaries
-        Output: Feature matrix (numpy array)
         
-        Ví dụ:
-        Input: [{'city': 'Hanoi', 'age': 25}, {'city': 'HCM', 'age': 30}]
-        Output: [[25, 0, 1], [30, 1, 0]]  # age, city=HCM, city=Hanoi
-        """
         try:
             # Fit và transform data
             features = self.vectorizer.fit_transform(data_dict_list)
@@ -27,7 +21,7 @@ class DictFeatureExtractor:
             
             return features, feature_names
         except Exception as e:
-            return None, str(e)
+            return None, str(e) 
     
     def demo_with_titanic(self, df, n_samples=5):
         """
