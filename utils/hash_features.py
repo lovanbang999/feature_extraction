@@ -3,12 +3,12 @@ import pandas as pd
 import numpy as np
 
 class HashFeatureExtractor:
-    # hàm khởi tạo
+    # khởi tạo
     def __init__(self, n_features=10):
         self.n_features = n_features
         self.hasher = FeatureHasher(n_features=n_features, input_type='dict')
 
-    # hàm trích xuất đặc trưng
+    # hàm trích xuất đặc trưng  
     def extract_features(self, data_dict_list):
         """
         Input: List of dictionaries
@@ -16,12 +16,14 @@ class HashFeatureExtractor:
         """
         try:
             # Transform data
-            features = self.hasher.transform(data_dict_list).toarray()
+            # features = self.hasher.transform(data_dict_list).toarray()
+            hashed_matrix = self.hasher.transform(data_dict_list)
+            features = hashed_matrix.toarray()
             return features
         except Exception as e:
             return None
     
-    # hàm so sánh feature hashing với dictVectorizer
+    #hàm so sánh feature hashing với dictVectorizer
     def compare_with_dict_vectorizer(self, data_dict_list):       
         # DictVectorizer
         dict_vec = DictVectorizer(sparse=False)
@@ -43,7 +45,7 @@ class HashFeatureExtractor:
         }
         return comparison, dict_features, hash_features
     
-# hàm test
+# Test function
 def test_hash_features():
     data = [
         {'country': 'Vietnam', 'city': 'Hanoi', 'age': 25},
@@ -59,10 +61,10 @@ def test_hash_features():
     print(features)
     
     # So sánh
-    comparison, dict_feat, hash_feat = extractor.compare_with_dict_vectorizer(data)
+    comparison, _, _ = extractor.compare_with_dict_vectorizer(data)
     print("\nComparison:")
     print(f"DictVectorizer: {comparison['DictVectorizer']}")
-    print(f"FeatureHasher: {comparison['FeatureHasher']}")
+    print(f"FeatureHasher: {comparison['FeatureHasher']}")  
 
 if __name__ == "__main__":
     test_hash_features()
