@@ -1,21 +1,14 @@
-"""
-Module xử lý Feature Hashing
-Giải thích: Sử dụng hash function để chuyển features thành vector có kích thước cố định
-Ưu điểm: Tiết kiệm bộ nhớ, xử lý nhanh với high-dimensional data
-"""
-
-from sklearn.feature_extraction import FeatureHasher
+from sklearn.feature_extraction import FeatureHasher,DictVectorizer
 import pandas as pd
 import numpy as np
 
 class HashFeatureExtractor:
+    # hàm khởi tạo
     def __init__(self, n_features=10):
-        """
-        n_features: Số dimensions của output vector
-        """
         self.n_features = n_features
         self.hasher = FeatureHasher(n_features=n_features, input_type='dict')
-        
+
+    # hàm trích xuất đặc trưng
     def extract_features(self, data_dict_list):
         """
         Input: List of dictionaries
@@ -24,24 +17,18 @@ class HashFeatureExtractor:
         try:
             # Transform data
             features = self.hasher.transform(data_dict_list).toarray()
-            
             return features
         except Exception as e:
             return None
     
-    def compare_with_dict_vectorizer(self, data_dict_list):
-        """
-        So sánh Feature Hashing vs DictVectorizer
-        """
-        from sklearn.feature_extraction import DictVectorizer
-        
+    # hàm so sánh feature hashing với dictVectorizer
+    def compare_with_dict_vectorizer(self, data_dict_list):       
         # DictVectorizer
         dict_vec = DictVectorizer(sparse=False)
         dict_features = dict_vec.fit_transform(data_dict_list)
         
         # Feature Hashing
         hash_features = self.extract_features(data_dict_list)
-        
         comparison = {
             'DictVectorizer': {
                 'n_features': dict_features.shape[1],
@@ -54,20 +41,18 @@ class HashFeatureExtractor:
                 'memory_size': hash_features.nbytes
             }
         }
-        
         return comparison, dict_features, hash_features
-
-# Test function
+    
+# hàm test
 def test_hash_features():
     data = [
         {'country': 'Vietnam', 'city': 'Hanoi', 'age': 25},
         {'country': 'Vietnam', 'city': 'HCM', 'age': 30},
         {'country': 'Thailand', 'city': 'Bangkok', 'age': 28}
     ]
-    
     extractor = HashFeatureExtractor(n_features=8)
     features = extractor.extract_features(data)
-    
+
     print("Original data:")
     print(data)
     print("\nHashed features (8 dimensions):")
